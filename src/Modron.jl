@@ -62,7 +62,7 @@ function parse_commands()
 
     @add_arg_table arg_settings["prepare"] begin
         "--data", "-d"
-            help = "Folder with jellyfish files to build a KCT from."
+            help = "Jellyfish file to turn into a Kct."
             arg_type = String
             required = true
         "--output", "-o"
@@ -75,54 +75,54 @@ function parse_commands()
 end
 
 
-function build_kct(jf_folder::String, output::String)
-    jf_files = readdir(jf_folder; join = true)
-    if length(jf_files) == 1
-        save(backup_kct(jf_files[1]), output)
-        return
-    end
+function build_kct(jf_file::String, output::String)
+    # jf_files = readdir(jf_folder; join = true)
+    # if length(jf_files) == 1
+    save(backup_kct(jf_file), output)
+    # return
+    # end
 
-    # Init stuff
-    prog = Progress(length(jf_files), "Parsing Jellyfish Files (binary tree version)"); update!(prog)
+    # # Init stuff
+    # prog = Progress(length(jf_files), "Parsing Jellyfish Files (binary tree version)"); update!(prog)
 
-    # Stacks previously loaded Kct
-    tree_stack = Array{Kct, 1}()
+    # # Stacks previously loaded Kct
+    # tree_stack = Array{Kct, 1}()
 
-    # Using a stack to emulate a binary tree merge. Adding a new leaf at every loop
-    for file in jf_files
-        push!(tree_stack, backup_kct(file))
+    # # Using a stack to emulate a binary tree merge. Adding a new leaf at every loop
+    # for file in jf_files
+    #     push!(tree_stack, backup_kct(file))
         
-        # Then checking if that leaf can be merged with another leaf at the same level.
-        # Keep merging up until no matching leaf at that level.
-        while length(tree_stack) >= 2 && typeof(tree_stack[end]) == typeof(tree_stack[end-1])
-            update!(prog, showvalues = [("Tree size on RAM: ", Base.format_bytes(Base.summarysize(tree_stack))),
-                                        ("Merging", "["*join([typeof(k) for k in tree_stack[1:end-1]], " | ")*" ← $(typeof(tree_stack[end]))]")])
-            last = pop!(tree_stack)
-            push!(tree_stack, (merge(pop!(tree_stack), last)))
-        end
+    #     # Then checking if that leaf can be merged with another leaf at the same level.
+    #     # Keep merging up until no matching leaf at that level.
+    #     while length(tree_stack) >= 2 && typeof(tree_stack[end]) == typeof(tree_stack[end-1])
+    #         update!(prog, showvalues = [("Tree size on RAM: ", Base.format_bytes(Base.summarysize(tree_stack))),
+    #                                     ("Merging", "["*join([typeof(k) for k in tree_stack[1:end-1]], " | ")*" ← $(typeof(tree_stack[end]))]")])
+    #         last = pop!(tree_stack)
+    #         push!(tree_stack, (merge(pop!(tree_stack), last)))
+    #     end
 
-        # Updating progress bar
-        next!(prog; showvalues = [("Tree size on RAM: ", Base.format_bytes(Base.summarysize(tree_stack)))])
-    end
-    finish!(prog)
-    # Extract the root node
-    final_node = popfirst!(tree_stack)
-    # JuBox.save(final_node, save_path*"leucegene_$(typeof(final_node))_samples_bt_backup.kct")
+    #     # Updating progress bar
+    #     next!(prog; showvalues = [("Tree size on RAM: ", Base.format_bytes(Base.summarysize(tree_stack)))])
+    # end
+    # finish!(prog)
+    # # Extract the root node
+    # final_node = popfirst!(tree_stack)
+    # # JuBox.save(final_node, save_path*"leucegene_$(typeof(final_node))_samples_bt_backup.kct")
     
-    # Cleanup any potential leftover leaf. Merges them linearly regardless of level.
-    prog = Progress(length(tree_stack)-1, "Remaining merges to cleanup outstanding leaves"); update!(prog)
-    for i in 1:length(tree_stack)-1
-        pushfirst!(tree_stack, merge(popfirst!(tree_stack), popfirst!(tree_stack)))
-        next!(prog)
-    end
-    finish!(prog)
-    # JuBox.save(tree_stack[end], output)
+    # # Cleanup any potential leftover leaf. Merges them linearly regardless of level.
+    # prog = Progress(length(tree_stack)-1, "Remaining merges to cleanup outstanding leaves"); update!(prog)
+    # for i in 1:length(tree_stack)-1
+    #     pushfirst!(tree_stack, merge(popfirst!(tree_stack), popfirst!(tree_stack)))
+    #     next!(prog)
+    # end
+    # finish!(prog)
+    # # JuBox.save(tree_stack[end], output)
 
-    # Merging root node and cleanup node, which is the entirely built kct, in order of samples.
-    final_node = merge(final_node, pop!(tree_stack))
+    # # Merging root node and cleanup node, which is the entirely built kct, in order of samples.
+    # final_node = merge(final_node, pop!(tree_stack))
 
-    # Saving that kct
-    save(final_node, output)
+    # # Saving that kct
+    # save(final_node, output)
 
 end
 
@@ -218,8 +218,9 @@ function build_walk_tree(seed::String, kct::Kct{N}, max_recursion::Int, min_coun
                                   ("Current reverse leaves", length(reverse_leaves)),
                                   ("Max forward leaves", max_forward_leaves),
                                   ("Max reverse leaves", max_reverse_leaves),
-                                  ("Forward tree memory", Base.format_bytes(Base.summarysize(forward_root))),
-                                  ("Reverse tree memory", Base.format_bytes(Base.summarysize(reverse_root)))])
+                                #   ("Forward tree memory", Base.format_bytes(Base.summarysize(forward_root))),
+                                #   ("Reverse tree memory", Base.format_bytes(Base.summarysize(reverse_root)))
+                                  ])
     end
     finish!(prog, showvalues = [("Max forward leaves", max_forward_leaves),
                                 ("Max reverse leaves", max_reverse_leaves)])
