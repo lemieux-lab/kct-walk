@@ -18,7 +18,7 @@ optional arguments:
   -s, --seed SEED       The seed to extend by k-mer walking.
   -l, --library LIBRARY
                         The KCT library to use for k-mer walking.
-  -o, --output OUTPUT   Output file. Will be in fasta64format.
+  -o, --output OUTPUT   Output file. Will be in fasta format.
   -r, --max_recursion MAX_RECURSION
                         How much the seed can be extended by k-mer
                         walking. (type: Int64, default: 500)
