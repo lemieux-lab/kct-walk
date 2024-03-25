@@ -29,12 +29,12 @@ optional arguments:
   -h, --help            show this help message and exit
 ```
 
-Kct preparation mode (Currently not working properly)
+Kct preparation mode (Currently only working on single file using the backup method, slow and dirty).
 ```
 usage: Modron.jl prepare -d DATA -o OUTPUT [-h]
 
 optional arguments:
-  -d, --data DATA      Folder with jellyfish files to build a KCT
+  -d, --data DATA      Jellyfish file to turn into a Kct.
                        from.
   -o, --output OUTPUT  The output kct file. Will be in binary format.
   -h, --help           show this help message and exit
