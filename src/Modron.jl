@@ -1,5 +1,5 @@
 import Pkg
-Pkg.activate("/u/jacquinn/Marut/Modron")
+Pkg.activate("Modron")
 
 using ProgressMeter
 # using Combinatorics
