@@ -13,15 +13,16 @@ abstract type Abstract_Node end
 mutable struct Tree_Node <: Abstract_Node
     kct_index::UInt32
     to::Vector{Tree_Node}
-    sample::Int
+    samples::Vector{UInt32}
 end
 get_seq(node::Abstract_Node, kct::Kct{N}) where {N} = String(kct[node.kct_index][1])
 
 mutable struct Tree_Root <: Abstract_Node
     seed::String
     to::Vector{Abstract_Node}
-    sample::Int
+    samples::Vector{Int}
 end
+
 get_seq(node::Tree_Root, kct::Kct{N}) where {N} = node.seed
 
 const nucleotides = ('A', 'T', 'G', 'C')
@@ -47,7 +48,7 @@ function parse_commands()
             arg_type = String
             required = true
         "--output", "-o"
-            help = "Output file. Will be in fasta64format."
+            help = "Output file. Will be in fasta format."
             arg_type = String
             required = true
         "--max_recursion", "-r"
@@ -62,67 +63,76 @@ function parse_commands()
 
     @add_arg_table arg_settings["prepare"] begin
         "--data", "-d"
-            help = "Jellyfish file to turn into a Kct."
+            help = "Folder that contains ONLY jellyfish files to turn into a Kct."
             arg_type = String
             required = true
         "--output", "-o"
             help = "The output kct file. Will be in binary format."
             arg_type = String
-            required = true    
+            required = true
+        "--jellyfish", "-j"
+            help = "Path of jellyfish executable"
+            arg_type = String
+            required = true   
+        "-k"
+            help = "The size of k-mers in jellyfish files"
+            arg_type = Int
+            default=31
     end   
 
     return parse_args(arg_settings)
 end
 
 
-function build_kct(jf_file::String, output::String)
-    # jf_files = readdir(jf_folder; join = true)
-    # if length(jf_files) == 1
-    save(backup_kct(jf_file), output)
-    # return
-    # end
+function build_kct(jf_files::Vector{String}, output::String, jellyfish_path::String; k::Int64=31)
+    if length(jf_files) == 1
+        save(backup_kct(jf_files[1], jellyfish_path, k=k), output)
+        return
+    end
 
-    # # Init stuff
-    # prog = Progress(length(jf_files), "Parsing Jellyfish Files (binary tree version)"); update!(prog)
+    # Init stuff
+    prog = Progress(length(jf_files), "Parsing Jellyfish Files (binary tree version)"); update!(prog)
 
-    # # Stacks previously loaded Kct
-    # tree_stack = Array{Kct, 1}()
+    # Stacks previously loaded Kct
+    tree_stack = Array{Kct, 1}()
 
-    # # Using a stack to emulate a binary tree merge. Adding a new leaf at every loop
-    # for file in jf_files
-    #     push!(tree_stack, backup_kct(file))
+    # Using a stack to emulate a binary tree merge. Adding a new leaf at every loop
+    for file in jf_files
+        push!(tree_stack, backup_kct(file, k=k, jellyfish_path))
         
-    #     # Then checking if that leaf can be merged with another leaf at the same level.
-    #     # Keep merging up until no matching leaf at that level.
-    #     while length(tree_stack) >= 2 && typeof(tree_stack[end]) == typeof(tree_stack[end-1])
-    #         update!(prog, showvalues = [("Tree size on RAM: ", Base.format_bytes(Base.summarysize(tree_stack))),
-    #                                     ("Merging", "["*join([typeof(k) for k in tree_stack[1:end-1]], " | ")*" ← $(typeof(tree_stack[end]))]")])
-    #         last = pop!(tree_stack)
-    #         push!(tree_stack, (merge(pop!(tree_stack), last)))
-    #     end
+        # Then checking if that leaf can be merged with another leaf at the same level.
+        # Keep merging up until no matching leaf at that level.
+        while length(tree_stack) >= 2 && typeof(tree_stack[end]) == typeof(tree_stack[end-1])
+            update!(prog, showvalues = [("Tree size on RAM: ", Base.format_bytes(Base.summarysize(tree_stack))),
+                                        ("Merging", "["*join([typeof(k) for k in tree_stack[1:end-1]], " | ")*" ← $(typeof(tree_stack[end]))]")])
+            last = pop!(tree_stack)
+            push!(tree_stack, (merge(pop!(tree_stack), last)))
+        end
 
-    #     # Updating progress bar
-    #     next!(prog; showvalues = [("Tree size on RAM: ", Base.format_bytes(Base.summarysize(tree_stack)))])
-    # end
-    # finish!(prog)
-    # # Extract the root node
-    # final_node = popfirst!(tree_stack)
-    # # JuBox.save(final_node, save_path*"leucegene_$(typeof(final_node))_samples_bt_backup.kct")
+        # Updating progress bar
+        next!(prog; showvalues = [("Tree size on RAM: ", Base.format_bytes(Base.summarysize(tree_stack)))])
+    end
+    finish!(prog)
+    # Extract the root node
+    final_node = popfirst!(tree_stack)
+    # JuBox.save(final_node, save_path*"leucegene_$(typeof(final_node))_samples_bt_backup.kct")
     
-    # # Cleanup any potential leftover leaf. Merges them linearly regardless of level.
-    # prog = Progress(length(tree_stack)-1, "Remaining merges to cleanup outstanding leaves"); update!(prog)
-    # for i in 1:length(tree_stack)-1
-    #     pushfirst!(tree_stack, merge(popfirst!(tree_stack), popfirst!(tree_stack)))
-    #     next!(prog)
-    # end
-    # finish!(prog)
-    # # JuBox.save(tree_stack[end], output)
+    # Cleanup any potential leftover leaf. Merges them linearly regardless of level.
+    prog = Progress(length(tree_stack)-1, "Remaining merges to cleanup outstanding leaves"); update!(prog)
+    for i in 1:length(tree_stack)-1
+        pushfirst!(tree_stack, merge(popfirst!(tree_stack), popfirst!(tree_stack)))
+        next!(prog)
+    end
+    finish!(prog)
+    # JuBox.save(tree_stack[end], output)
 
-    # # Merging root node and cleanup node, which is the entirely built kct, in order of samples.
-    # final_node = merge(final_node, pop!(tree_stack))
+    # Merging root node and cleanup node, which is the entirely built kct, in order of samples.
+    if !isempty(tree_stack)
+        final_node = merge(final_node, pop!(tree_stack))
+    end
 
-    # # Saving that kct
-    # save(final_node, output)
+    # Saving that kct
+    save(final_node, output)
 
 end
 
@@ -150,8 +160,8 @@ end
 
 function build_walk_tree(seed::String, kct::Kct{N}, max_recursion::Int, min_count::Int) where {N}
     
-    forward_root = Tree_Root(seed, Vector{Abstract_Node}(), 0)
-    reverse_root = Tree_Root(seed, Vector{Abstract_Node}(), 0)
+    forward_root = Tree_Root(seed, Vector{Abstract_Node}(), [0])
+    reverse_root = Tree_Root(seed, Vector{Abstract_Node}(), [0])
     forward_leaves = Vector{Abstract_Node}([forward_root])
     reverse_leaves = Vector{Abstract_Node}([reverse_root])
     max_forward_leaves = 0
@@ -167,17 +177,26 @@ function build_walk_tree(seed::String, kct::Kct{N}, max_recursion::Int, min_coun
             for alternate in alternates
                 kct_index = findfirst(kct, DNAKmer(alternate))
                 if kct_index != 0
-                    if leaf.sample == 0
+                    samples = Vector{Int}()
+                    if leaf.samples == Vector{Int}([0])
                         for (s, c) in enumerate(kct[kct_index][2])
                             if c >= min_count
-                                new_node = Tree_Node(kct_index, Vector{Tree_Node}(), s)
-                                push!(leaf.to, new_node)
-                                push!(new_forward_leaves, new_node)
+                                push!(samples, s)
                             end
                         end
+                        if !isempty(samples)
+                            new_node = Tree_Node(kct_index, Vector{Tree_Node}(), samples)
+                            push!(leaf.to, new_node)
+                            push!(new_forward_leaves, new_node)
+                        end
                     else
-                        if kct[kct_index][2][leaf.sample] >= min_count
-                            new_node = Tree_Node(kct_index, Vector{Tree_Node}(), leaf.sample)
+                        for s in leaf.samples
+                            if kct[kct_index][2][s] >= min_count
+                                push!(samples, s)
+                            end
+                        end
+                        if !isempty(samples)
+                            new_node = Tree_Node(kct_index, Vector{Tree_Node}(), samples)
                             push!(leaf.to, new_node)
                             push!(new_forward_leaves, new_node)
                         end
@@ -191,17 +210,26 @@ function build_walk_tree(seed::String, kct::Kct{N}, max_recursion::Int, min_coun
             for alternate in alternates
                 kct_index = findfirst(kct, DNAKmer(alternate))
                 if kct_index != 0
-                    if leaf.sample == 0
+                    samples = Vector{Int}()
+                    if leaf.samples == Vector{Int}([0])
                         for (s, c) in enumerate(kct[kct_index][2])
                             if c >= min_count
-                                new_node = Tree_Node(kct_index, Vector{Tree_Node}(), s)
-                                push!(leaf.to, new_node)
-                                push!(new_reverse_leaves, new_node)
+                                push!(samples, s)
                             end
                         end
+                        if !isempty(samples)
+                            new_node = Tree_Node(kct_index, Vector{Tree_Node}(), samples)
+                            push!(leaf.to, new_node)
+                            push!(new_reverse_leaves, new_node)
+                        end
                     else
-                        if kct[kct_index][2][leaf.sample] >= min_count
-                            new_node = Tree_Node(kct_index, Vector{Tree_Node}(), leaf.sample)
+                        for s in leaf.samples
+                            if kct[kct_index][2][s] >= min_count
+                                push!(samples, s)
+                            end
+                        end
+                        if !isempty(samples)
+                            new_node = Tree_Node(kct_index, Vector{Tree_Node}(), samples)
                             push!(leaf.to, new_node)
                             push!(new_reverse_leaves, new_node)
                         end
@@ -245,7 +273,7 @@ function recursive_extract(current_leaves::Vector{Abstract_Node}, sequences::Vec
             if !haskey(finished, sequences[i])
                 finished[sequences[i]] = Vector{Int}()
             end
-            push!(finished[sequences[i]], leaf.sample)
+            push!(finished[sequences[i]], leaf.samples...)
         end
         # println(leaf.to)
         for next in leaf.to
@@ -298,7 +326,8 @@ parsed_args = parse_commands()
         kct_walk(sub["seed"], sub["library"], sub["output"], max_recursion = sub["max_recursion"], min_count = sub["min_count"])
     elseif parsed_args["%COMMAND%"] == "prepare"
         sub = parsed_args["prepare"]
-        build_kct(sub["data"], sub["output"])
+        jf_files = readdir(sub["data"]; join = true)
+        build_kct(jf_files, sub["output"], sub["jellyfish"], k=sub["k"])
     end
 end
 

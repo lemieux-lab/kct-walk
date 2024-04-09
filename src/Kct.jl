@@ -193,7 +193,7 @@ function Kct(fn::String; k::Int=31)
     kct = Kct(1)
 
     while(!eof(f))
-        tmp_seq = DNA27mer{k}((read(f, UInt64),))
+        tmp_seq = DNA27mer((read(f, UInt64),))
         tmp_nb = read(f, UInt32)
         # println(tmp_seq, " : ", tmp_nb)
         # return
@@ -212,9 +212,10 @@ end
 
 # uses the dump instead of the binary. tedious and inelegant, but a good backup_kct
 # in case reading the binary fails
-function backup_kct(fn::String; k::Int64=31)
+# In our install jf executable is at /soft/bioinfo/linux_RH7/python-2.7.6/bin/jellyfish
+function backup_kct(fn::String, jf::String; k::Int64=31)
     io = IOBuffer()
-    cmd = pipeline(`/soft/bioinfo/linux_RH7/python-2.7.6/bin/jellyfish dump $fn`; stdout=io, stderr=devnull)
+    cmd = pipeline(`$jf dump $fn`; stdout=io, stderr=devnull)
     run(cmd)
     data = IOBuffer(String(take!(io)))  # OUCH!!!
     nb = Vector{UInt32}()
