@@ -29,13 +29,17 @@ optional arguments:
   -h, --help            show this help message and exit
 ```
 
-Kct preparation mode (Currently only working on single file using the backup method, slow and dirty).
+Kct preparation mode (Currently K option does nothing and is hardcoded for 27 instead of 31, problem with DNAKmer{K} typing, currently investigating)
 ```
-usage: Modron.jl prepare -d DATA -o OUTPUT [-h]
+usage: Modron.jl prepare -d DATA -o OUTPUT -j JELLYFISH [-k K] [-h]
 
 optional arguments:
-  -d, --data DATA      Jellyfish file to turn into a Kct.
-                       from.
-  -o, --output OUTPUT  The output kct file. Will be in binary format.
-  -h, --help           show this help message and exit
+  -d, --data DATA       Folder that contains ONLY jellyfish files to
+                        turn into a Kct.
+  -o, --output OUTPUT   The output kct file. Will be in binary format.
+  -j, --jellyfish JELLYFISH
+                        Path of jellyfish executable
+  -k K                  The size of k-mers in jellyfish files (type:
+                        Int64, default: 31)
+  -h, --help            show this help message and exit
 ```
