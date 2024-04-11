@@ -290,7 +290,7 @@ function get_extended_seeds(seed::String, kct::Kct{N}) where {N}
     seeds = Vector{String}()
     for k in kct.table
         if occursin(seed, String(k.seq))
-            push!(seeds, k.seq)
+            push!(seeds, String(k.seq))
         end
         next!(prog, showvalues=[("Extended seeds found", length(seeds))])
     end
