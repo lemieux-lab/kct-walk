@@ -1,7 +1,7 @@
 # kct-walk
 k-mer walking with kct. Extends a seed without needing to come back to a reference.
 
-Installing (enter Julia package mode by pressing ] in a julia shell)
+Installing (enter Julia package mode by pressing ] in a julia shell located in src)
 ```
 (@v1.8) pkg> activate Modron
   Activating project at `~/Marut/Modron`
