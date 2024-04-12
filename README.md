@@ -14,7 +14,7 @@ Walking mode
 usage: Modron.jl walk -s SEED -l LIBRARY -o OUTPUT [-r MAX_RECURSION]
                       [-c MIN_COUNT] [-h]
 
-optional arguments:
+arguments:
   -s, --seed SEED       The seed to extend by k-mer walking.
   -l, --library LIBRARY
                         The KCT library to use for k-mer walking.
@@ -29,11 +29,11 @@ optional arguments:
   -h, --help            show this help message and exit
 ```
 
-Kct preparation mode (Currently K option does nothing and is hardcoded for 27 instead of 31, problem with DNAKmer{K} typing, currently investigating)
+Kct preparation mode
 ```
 usage: Modron.jl prepare -d DATA -o OUTPUT -j JELLYFISH [-k K] [-h]
 
-optional arguments:
+arguments:
   -d, --data DATA       Folder that contains ONLY jellyfish files to
                         turn into a Kct.
   -o, --output OUTPUT   The output kct file. Will be in binary format.
@@ -43,3 +43,8 @@ optional arguments:
                         Int64, default: 31)
   -h, --help            show this help message and exit
 ```
+
+**Known issues:**
+- Currently only supports building KCTs with 27mers (-k option doesn't do anything right now)
+- Building from jf is slow because it relies on dumps instead of binaries
+- -d argument is extremely inconveniant. Need to detect type (folder or file for single sample KCT) and only use .jf files in folder.
