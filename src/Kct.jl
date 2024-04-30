@@ -7,16 +7,16 @@ include("parallel_sort.jl")
 export Kct, Kct, load, save, merge
 
 struct KRecord
-    seq::DNA31mer
+    seq::DNA27mer
     pool_id::UInt32
 end
 
 Base.isless(a::KRecord, b::KRecord) = a.seq < b.seq
-Base.isless(a::DNA31mer, b::KRecord) = a < b.seq
-Base.isless(a::KRecord, b::DNA31mer) = a.seq < b
+Base.isless(a::DNA27mer, b::KRecord) = a < b.seq
+Base.isless(a::KRecord, b::DNA27mer) = a.seq < b
 Base.:(==)(a::KRecord, b::KRecord) = a.seq == b.seq
 
-const mask_big = 0x00000001 << 31
+const mask_big = 0x00000001 << 27
 isbig(x::UInt32) = x & mask_big != 0
 makebig(x::Integer) = UInt32(x) | mask_big
 idbig(x::UInt32) = x & (~mask_big)
@@ -53,7 +53,7 @@ function Base.push!(kct::Kct{N}, count::Matrix{UInt8}) where {N}
     return id
 end
 
-function Base.push!(kct::Kct{N}, seq::DNA31mer, count::Matrix{UInt32}) where {N}
+function Base.push!(kct::Kct{N}, seq::DNA27mer, count::Matrix{UInt32}) where {N}
     id = push!(kct, count)
     push!(kct.table, KRecord(seq, id))
     return id
@@ -121,21 +121,21 @@ Base.length(kct::Kct) = length(kct.table)
 
 # Base.getindex(kct::Kct{N,T}, v::Vector{U}) where {N,T,U<:Integer} = [kct[i] for i in v]
 
-# function Base.getindex(kct::Kct{N, T}, key::DNA31mer{K})::Tuple{DNA31mer{K}, NTuple{N, UInt32}} where {N, T}
+# function Base.getindex(kct::Kct{N, T}, key::DNA27mer{K})::Tuple{DNA27mer{K}, NTuple{N, UInt32}} where {N, T}
 #     idx_key = (key.data[1] >> 40) + 1
 #     r = kct.idx[idx_key]
 #     t = @view kct.table[r]
 #     i = searchsortedfirst(t, key)
 #     if i > length(t) || t[i].seq != key
-#         return (DNA31mer{K}("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"), NTuple{N, UInt32}(zeros(UInt32, N)))
+#         return (DNA27mer{K}("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"), NTuple{N, UInt32}(zeros(UInt32, N)))
 #     end
 #     first(kct.pool[t[i].pool_id]) == typemax(T) && return kct.next[key]
 #     return (t[i].seq, convert(NTuple{N, UInt32}, kct.pool[t[i].pool_id]))
 # end
 
-# Base.getindex(kct::Kct, key::String) = kct[DNA31mer{K}(key)]
+# Base.getindex(kct::Kct, key::String) = kct[DNA27mer{K}(key)]
 
-function Base.show(io::IO, t::Tuple{DNA31mer, NTuple{N, UInt32}}) where {N}
+function Base.show(io::IO, t::Tuple{DNA27mer, NTuple{N, UInt32}}) where {N}
     print(io, t[1], ": ", join(string.(t[2]), ", "))
 
 end
@@ -177,10 +177,10 @@ end
 """
     Kct(fn::String)
 
-Parse a Jellyfish K-mer count table into a sorted array of DNA31mer. No
+Parse a Jellyfish K-mer count table into a sorted array of DNA27mer. No
 verification is made on the header, use with caution. 
 """
-function Kct(fn::String; k::Int=31)
+function Kct(fn::String; k::Int=27)
     f = open(fn, "r")
     offset = parse(Int, readuntil(f, "{"))
     json_start = position(f)
@@ -193,7 +193,7 @@ function Kct(fn::String; k::Int=31)
     kct = Kct(1)
 
     while(!eof(f))
-        tmp_seq = DNA31mer((read(f, UInt64),))
+        tmp_seq = DNA27mer((read(f, UInt64),))
         tmp_nb = read(f, UInt32)
         # println(tmp_seq, " : ", tmp_nb)
         # return
@@ -213,7 +213,7 @@ end
 # uses the dump instead of the binary. tedious and inelegant, but a good backup_kct
 # in case reading the binary fails
 # In our install jf executable is at /soft/bioinfo/linux_RH7/python-2.7.6/bin/jellyfish
-function backup_kct(fn::String, jf::String; k::Int64=31)
+function backup_kct(fn::String, jf::String; k::Int64=27)
     io = IOBuffer()
     cmd = pipeline(`$jf dump $fn`; stdout=io, stderr=devnull)
     run(cmd)
@@ -223,7 +223,7 @@ function backup_kct(fn::String, jf::String; k::Int64=31)
     prog = ProgressUnknown()
     while(!eof(data))
         tmp_nb = parse(UInt32, readline(data)[2:end])
-        tmp_seq = DNA31mer(readline(data))
+        tmp_seq = DNA27mer(readline(data))
         push!(kct.table, KRecord(tmp_seq, UInt32(0)))
         push!(nb, tmp_nb)
         next!(prog)
@@ -261,7 +261,7 @@ function Base.read(s::IO, ::Type{Kct})
     return kct
 end
 
-function Base.findfirst(kct::Kct{N}, key::DNA31mer) where {N}
+function Base.findfirst(kct::Kct{N}, key::DNA27mer) where {N}
     idx_key = (key.data[1] >> 40) + 1
     r = kct.idx[idx_key]
     t = @view kct.table[r]
