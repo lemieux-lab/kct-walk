@@ -244,6 +244,7 @@ function build_walk_tree(seed::String, kct::Kct{N}, max_recursion::Int, min_coun
         max_reverse_leaves = maximum((length(reverse_leaves), max_reverse_leaves))
         next!(prog, showvalues = [("Current forward leaves", length(forward_leaves)),
                                   ("Current reverse leaves", length(reverse_leaves)),
+                                  ("Current Tree size on memory", Base.format_bytes(Base.summarysize(forward_root)+Base.summarysize(reverse_root))),
                                   ("Max forward leaves", max_forward_leaves),
                                   ("Max reverse leaves", max_reverse_leaves),
                                 #   ("Forward tree memory", Base.format_bytes(Base.summarysize(forward_root))),
@@ -326,7 +327,12 @@ parsed_args = parse_commands()
         kct_walk(sub["seed"], sub["library"], sub["output"], max_recursion = sub["max_recursion"], min_count = sub["min_count"])
     elseif parsed_args["%COMMAND%"] == "prepare"
         sub = parsed_args["prepare"]
-        jf_files = readdir(sub["data"]; join = true)
+        if isfile(sub["data"])
+            jf_files = [sub["data"]]
+        else
+            jf_files = [f for f in readdir(sub["data"]; join = true) if f[end-2:end] == ".jf"]
+        end
+        println(jf_files);return
         build_kct(jf_files, sub["output"], sub["jellyfish"], k=sub["k"])
     end
 end
