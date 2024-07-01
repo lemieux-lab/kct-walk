@@ -77,7 +77,7 @@ function parse_commands()
         "-k"
             help = "The size of k-mers in jellyfish files"
             arg_type = Int
-            default=31
+            default=27
     end   
 
     return parse_args(arg_settings)
