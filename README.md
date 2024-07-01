@@ -40,7 +40,7 @@ arguments:
   -j, --jellyfish JELLYFISH
                         Path of jellyfish executable
   -k K                  The size of k-mers in jellyfish files (type:
-                        Int64, default: 31)
+                        Int64, default: 27)
   -h, --help            show this help message and exit
 ```
 
